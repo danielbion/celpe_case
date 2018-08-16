@@ -10,7 +10,6 @@ setwd(path)
 
 dataset = read.table("Train.csv", header=T, sep=";", stringsAsFactors = FALSE) 
 
-
 # Checando se a Variável 4 é a concatenação das variáveis 1, 2 e 3
 #X4= paste(dataset[,'X1'], dataset[,'X2'], dataset[,'X3'], sep="")
 #compare = X4 == dataset[, 'X4']
@@ -91,6 +90,7 @@ for(i in 1:numOfFeatures){
 }
 
 ## Split in train + test set
+dataset[, 'TARGET'] = as.factor(dataset[, 'TARGET'])
 target = dataset[, 'TARGET']
 
 class1 = table(target)[1]
@@ -116,7 +116,8 @@ summary(gml_model)
 
 # KNN
 train_NO_TGT = train[, -numOfFeatures]
-knn_model = knn(train_NO_TGT, test, trainTarget, k = 2)
+test_NO_TGT = test[, -numOfFeatures]
+knn_model = knn(train_NO_TGT, test_NO_TGT, trainTarget, k = 2)
 table(testTarget,knn_model)
 
 # DT
