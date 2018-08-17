@@ -1,5 +1,16 @@
+getSignificance = function(dataset){
+    result = list()
+    numOfFeatures = ncol(dataset)
+    for(i in 1: (numOfFeatures-1)){
+        print(names(dataset)[i])
+        glm_model = glm(dataset[,'TARGET'] ~ dataset[, i], family=binomial(link='logit'), data = dataset)
+        result[[i]] = summary(glm_model)$coefficients[2,4]
+    }
+    return (result)
+}
+
 preProcessDataset = function(dataset){
-    toRemove = c(1,5)
+    toRemove = c(1,2,5,6,76,77,78) # Retiradas por análise manual
 
     # Retirar variáveis com mais de 90% de NA
     toRemove = c(toRemove, removeNA(dataset, 0.9))

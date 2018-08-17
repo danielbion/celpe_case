@@ -16,11 +16,17 @@ source('utils.r')
 
 ## (Executar esta etapa apenas uma vez)
 # Lendo a base de treinamento
-# dataset = read.table('Train.csv', header=T, sep=';', stringsAsFactors = FALSE)
+ dataset = read.table('Train.csv', header=T, sep=';', stringsAsFactors = FALSE)
 
 ## Pre processando e salvando em outro arquivo
-# dataset = preProcessDataset(dataset)
-# write.table(as.data.frame(dataset), file = 'processed_train.csv', sep=';', row.names = FALSE)
+ dataset = preProcessDataset(dataset)
+ 
+## Selecionar melhores features
+# Comparar dataset completo com dataset melhores features
+ sig = getSignificance(dataset)
+ names(dataset)[which(sig < 0.01)]
+
+ write.table(as.data.frame(dataset), file = 'processed_train.csv', sep=';', row.names = FALSE)
 
 
 ####################################
