@@ -1,12 +1,37 @@
+splitDataset = function(dataset, trainPercent){
+    numOfRows = nrow(dataset)
+    idxs = sample(1:numOfRows, trainPercent * numOfRows)
+    train = dataset[idxs,]
+    test = dataset[-idxs,]
+    
+    set = list()
+    set$train = train
+    set$trainLabels = set$train[, 'TARGET']
+
+    set$test = test
+    set$testLabels = set$test[, 'TARGET']
+
+    # Retirando o alvo para facilitar a fórmula
+    set$train_NO_TGT = set$train[, -ncol(set$train)]
+    set$test_NO_TGT = set$test[, -ncol(set$test)]
+    return (set)
+}
+
+selectBestFeatures = function(dataset){
+    sig = getSignificance(dataset)
+    dataset = dataset[, which(sig < 0.05)]
+    return (dataset)
+}
+
 getSignificance = function(dataset){
-    result = list()
+    sig = list()
     numOfFeatures = ncol(dataset)
     for(i in 1: (numOfFeatures-1)){
-        print(names(dataset)[i])
+        # print(names(dataset)[i])
         glm_model = glm(dataset[,'TARGET'] ~ dataset[, i], family=binomial(link='logit'), data = dataset)
-        result[[i]] = summary(glm_model)$coefficients[2,4]
+        sig[[i]] = summary(glm_model)$coefficients[2,4]
     }
-    return (result)
+    return (sig)
 }
 
 preProcessDataset = function(dataset){
@@ -100,35 +125,5 @@ replaceCategorialWithNumerical = function(dataset){
             dataset[, i] = as.factor(as.numeric(dataset[,i]))
         }
     }
-    return (dataset)
-}
-
-sampleDataset = function(dataset, trainPercent){
-    numOfRows = nrow(dataset)
-    idxs = sample(1:numOfRows, trainPercent * numOfRows)
-    train = dataset[idxs,]
-    test = dataset[-idxs,]
-    return (list(train, test))
-}
-
-overBalanceDataset = function(dataset){
-    target = dataset[, 'TARGET']
-
-    class1 = table(target)[1]
-    class2 = table(target)[2]
-    idxs = sample(which(target == 1), class1 - class2, replace = TRUE)
-    dataset = rbind(dataset, dataset[idxs,])
-    return (dataset)
-}
-
-underBalanceDataset = function(dataset){
-    target = dataset[, 'TARGET']
-
-    class1 = table(target)[1]
-    class2 = table(target)[2]
-    idxsClass1 = sample(which(target == 0), class2, replace = TRUE)
-    idxsClass2 = sample(which(target == 1), class2)
-    dataset = rbind(dataset[idxsClass1,], dataset[idxsClass2,])
-    dataset = dataset[sample(nrow(dataset)),]
     return (dataset)
 }
