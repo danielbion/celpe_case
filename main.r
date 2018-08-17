@@ -1,13 +1,14 @@
-# install.packages('devtools')
 # install.packages('pacman')
 # install.packages('ROSE')
 # install.packages('rpart')
+# install.packages('xgboost')
 
 pacman::p_load('h2o')
 h2o.init(nthreads=-1)
 
 library('ROSE')
 library('rpart')
+library('xgboost')
 
 path = 'C:/Projects/case_celpe/celpe_case'
 setwd(path)
@@ -68,8 +69,14 @@ dl_model = h2o.deeplearning(y='TARGET', training_frame=as.h2o(dataset_train), va
     balance_classes=TRUE,
     score_validation_sampling='Stratified')
 
-# Entender os outputs, fazer predições
-# random forests, gbm, xgboost, lightgbm, catboost
-# cross fold 10 fold
+# Extreme Gradient Boosting
+target_train = as.numeric(target_train)
+target_train[which(target_train == 2)] = 0
 
-#gbm_model = gbm(target_train ~ ., data = train_NO_TGT)
+bst= xgboost(data = data.matrix(train_NO_TGT, rownames.force = NA), label = target_train, max_depth = 2, eta = 1, nthread = 2, nrounds = 2, objective = "binary:logistic")
+pred = predict(bst, data.matrix(test_NO_TGT, rownames.force = NA))
+roc.curve(target_test, pred, plotit = F)
+
+
+# Entender os outputs, fazer predições
+# cross fold 10 folds

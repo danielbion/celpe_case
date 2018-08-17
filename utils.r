@@ -86,7 +86,7 @@ replaceCategorialWithNumerical = function(dataset){
     for(i in 1:numOfFeatures){
         numeric = is.numeric(dataset[,i])
         if(!numeric){
-            dataset[, i] = as.numeric(as.factor(dataset[,i]))
+            dataset[, i] = as.factor(as.numeric(dataset[,i]))
         }
     }
     return (dataset)
