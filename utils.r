@@ -1,37 +1,24 @@
-splitDataset = function(dataset, trainPercent){
+splitDataset = function(dataset, numOfFolds){
     numOfRows = nrow(dataset)
-    idxs = sample(1:numOfRows, trainPercent * numOfRows)
-    train = dataset[idxs,]
-    test = dataset[-idxs,]
-    
-    set = list()
-    set$train = train
-    set$trainLabels = set$train[, 'TARGET']
 
-    set$test = test
-    set$testLabels = set$test[, 'TARGET']
+    dataset = dataset[sample(nrow(dataset)),]
+    folds = cut(seq(1,nrow(dataset)), breaks=numOfFolds, labels=FALSE)
 
-    # Retirando o alvo para facilitar a fórmula
-    set$train_NO_TGT = set$train[, -ncol(set$train)]
-    set$test_NO_TGT = set$test[, -ncol(set$test)]
-    return (set)
-}
+    splitedDataset = list()
 
-selectBestFeatures = function(dataset){
-    sig = getSignificance(dataset)
-    dataset = dataset[, which(sig < 0.05)]
-    return (dataset)
-}
-
-getSignificance = function(dataset){
-    sig = list()
-    numOfFeatures = ncol(dataset)
-    for(i in 1: (numOfFeatures-1)){
-        # print(names(dataset)[i])
-        glm_model = glm(dataset[,'TARGET'] ~ dataset[, i], family=binomial(link='logit'), data = dataset)
-        sig[[i]] = summary(glm_model)$coefficients[2,4]
+    for(i in 1:numOfFolds){        
+        testIndexes = which(folds==i, arr.ind=TRUE)
+        set = list()
+        set$test = dataset[testIndexes, ]
+        set$train = dataset[-testIndexes, ]
+        set$trainLabels = set$train[, 'TARGET']
+        set$testLabels = set$test[, 'TARGET']
+        set$trainNoLabels = set$train[, -ncol(set$train)]
+        set$testNoLabels = set$test[, -ncol(set$test)]
+        splitedDataset[[i]] = set
     }
-    return (sig)
+
+    return (splitedDataset)
 }
 
 preProcessDataset = function(dataset){

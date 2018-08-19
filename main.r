@@ -11,28 +11,35 @@ source('utils.r')
 
 # Decision Tree
 dtTest = function(dataset){
-    dt_model = rpart(dataset$trainLabels ~ ., data = dataset$train_NO_TGT)
-    pred = predict(dt_model, newdata = dataset$test_NO_TGT)
+    dt_model = rpart(dataset$trainLabels ~ ., data = dataset$trainNoLabels)
+    pred = predict(dt_model, newdata = dataset$testNoLabels)
 
     pred_hard = ifelse(pred < 0.50, 0, 1)
-    print ("Decision Tree")
-    print(confusionMatrix(as.factor(pred_hard), as.factor(dataset$testLabels)))
-    print(roc.curve(dataset$testLabels, pred, plotit = F))
+    cfMatrix = confusionMatrix(as.factor(pred_hard), as.factor(dataset$testLabels))
+    auc = roc.curve(dataset$testLabels, pred, plotit = F)$auc
+    return (list(auc, cfMatrix))
 }
 
 # Balanced Deep Learning
 deepTest = function(dataset){
     # Transformando alvo em fator, para o modelo entender que a variável é binária e não numérica
-    x = dataset
     dataset$train[, 'TARGET'] = as.factor(dataset$train[, 'TARGET'])
     dataset$test[, 'TARGET'] = as.factor(dataset$test[, 'TARGET'])
     dl_model = h2o.deeplearning(y='TARGET', training_frame=as.h2o(dataset$train), validation_frame=as.h2o(dataset$test),
-        hidden=c(100, 100), epochs=5, activation='Tanh',
+        hidden=c(100, 100), epochs=10, activation='Tanh',
         score_training_samples=0, 
         score_validation_samples=0,
-        balance_classes=TRUE)
-    print("Deep Learning")
-    print (dl_model)
+        balance_classes=TRUE,
+        quiet_mode = TRUE)
+    pred = h2o.predict(dl_model, as.h2o(dataset$test))
+    pred = as.data.frame(pred)
+
+    pred_hard = pred[,1]
+    pred_prob = pred[,3]
+
+    cfMatrix = confusionMatrix(as.factor(pred_hard), as.factor(dataset$testLabels))
+    auc = roc.curve(dataset$testLabels, pred_prob, plotit = F)$auc
+    return (list(auc, cfMatrix))
 }
 
 # Extreme Gradient Boosting
@@ -41,22 +48,50 @@ xgboostTest = function(dataset){
     trainLabels = as.numeric(dataset$trainLabels)
     trainLabels[which(trainLabels == 2)] = 0
 
-    bst= xgboost(data = data.matrix(dataset$train_NO_TGT, rownames.force = NA), label = trainLabels, nrounds = 50, objective = "binary:logistic")
-    pred = predict(bst, data.matrix(dataset$test_NO_TGT, rownames.force = NA))
+    bst= xgboost(data = data.matrix(dataset$trainNoLabels, rownames.force = NA), 
+        label = trainLabels, nrounds = 1, objective = "binary:logistic", verbose = 0)
+    pred = predict(bst, data.matrix(dataset$testNoLabels, rownames.force = NA))
     
     pred_hard = ifelse(pred < 0.50, 0, 1)
-    print ("Decision Tree")
-    print(confusionMatrix(as.factor(pred_hard), as.factor(dataset$testLabels)))
-    print(roc.curve(dataset$testLabels, pred, plotit = F))    
+    
+    cfMatrix = confusionMatrix(as.factor(pred_hard), as.factor(dataset$testLabels))
+    auc = roc.curve(dataset$testLabels, pred, plotit = F)$auc
+    return (list(auc, cfMatrix))
 }
-
 
 # Lendo a base pré processada
 dataset = read.table('processed_train.csv', header=T, sep=';')
-# Dividindo a base em 70% treinamento e 30% teste
-set.seed(2)
-dataset = splitDataset(dataset, 0.7)
 
-dtTest(dataset)
-deepTest(dataset)
-xgboostTest(dataset)
+# Dividindo a base em k folds para validação cruzada
+numOfFolds = 30
+dataset = splitDataset(dataset, numOfFolds)
+
+# Guardando resultados da área sob a curva ROC
+aucResults = list()
+for(i in 1:numOfFolds){
+    dt = dtTest(dataset[[i]])
+    aucResults$dt = c(aucResults$dt, dt[[1]])
+    
+    boost = xgboostTest(dataset[[i]])
+    aucResults$boost = c(aucResults$boost, boost[[1]])
+
+    deep = deepTest(dataset[[i]])
+    aucResults$deep = c(aucResults$deep, deep[[1]])
+}
+
+saveRDS(aucResults, "aucResults.rds") 
+#aucResults = readRDS("aucResults.rds")
+
+# Analisando os resultados
+summary(aucResults$boost)
+summary(aucResults$dt)
+summary(aucResults$deep)
+
+# Aplicando testes de hipótese para garantir que os resultados diferem
+# Rejeita a hipótese que os resultados são iguais
+test0 = friedman.test(cbind( aucResults$dt, aucResults$boost, aucResults$deep)) 
+
+# Não rejeita a hipótese de que um método é melhor que o outro
+test1 = wilcox.test(aucResults$boost, aucResults$dt, paired = TRUE, alternative = "less", conf.level = 0.95)
+test2 = wilcox.test(aucResults$boost, aucResults$deep, paired = TRUE, alternative = "less", conf.level = 0.95)
+test3 = wilcox.test(aucResults$dt, aucResults$deep, paired = TRUE, alternative = "less", conf.level = 0.95)
