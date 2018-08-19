@@ -98,6 +98,6 @@ testModels = friedman.test(cbind( aucResults$dt, aucResults$boost, aucResults$de
 # Não rejeita a hipótese de que um método é melhor que o outro
 testDeep = wilcox.test(aucResults$deep_balanced, aucResults$deep, paired = TRUE, alternative = "less", conf.level = 0.95)
 testBoostDt = wilcox.test(aucResults$boost, aucResults$dt, paired = TRUE, alternative = "less", conf.level = 0.95)
-testBoostDeep = wilcox.test(aucResults$boost, aucResults$deep, paired = TRUE, alternative = "less", conf.level = 0.95)
+testBoostDeep = wilcox.test(aucResults$boost, aucResults$deep_balanced, paired = TRUE, alternative = "less", conf.level = 0.95)
 testDtDeep = wilcox.test(aucResults$dt, aucResults$deep, paired = TRUE, alternative = "less", conf.level = 0.95)
 
